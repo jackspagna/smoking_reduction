@@ -1,0 +1,167 @@
+---
+title: "Worldwide Smoking Reduction Visualized"
+output:
+  html_document:
+    df_print: paged
+---
+There's no doubt that smoking poses serious long term health risks. Smokers are at risk of developing gum disease, tooth decay, lung cancer, heart disease, and so many more health problems. Because of this threat to public health, many efforts have been made to reduce the sale of cigarettes and to help current smokers quit smoking.
+
+As a result of governments imposing taxes on tobacco, cigarettes have become very expensive. People who smoke regularly will likely spend large sums of money on cigarettes over the course of months and years, thus making it more difficult for people to afford the habit. We can visualize the distribution of cigarette prices across the globe using a histogram, where each bin represents a price range (like 3 to 5 dollars) and the length of the bin represents the number of countries where the average price of pack of cigarettes falls in the specified range.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(maps)
+```
+
+```{r}
+cigprice=read.csv("https://raw.githubusercontent.com/jackspagna/smoking_reduction/main/average-price-of-a-pack-of-cigarettes.csv")
+
+names(cigprice)=c("Entity", "Code", "Year", "Price")
+
+cigprice2014=cigprice%>%
+  filter(Year==2014)
+
+cigprice2014$Entity[cigprice2014$Entity=="United States"]="USA"
+cigprice2014$Entity[cigprice2014$Entity=="Czechia"]="Czech Republic"
+
+ggplot(cigprice2014, 
+       aes(x=Price)) + 
+  geom_histogram(binwidth=2, 
+                 fill="darkolivegreen3", 
+                 color="black") + 
+  scale_x_continuous(breaks=seq(0, 12, by=2), 
+                     labels=c("Less than $1", "$1 to $3", "$3 to $5", "$5 to $7", "$7 to $9", "$9 to $11", "$11 to $13")) +
+  ylim(0, 45) + 
+  stat_bin(aes(y=after_stat(count), 
+               label=after_stat(count)), 
+           geom="text", 
+           vjust=-.5, 
+           binwidth=2) +
+  theme_bw() + 
+  labs(title="Average price of a pack of cigarettes worldwide, 2014", 
+       subtitle="Measured in international dollars", 
+       x="", 
+       y="Number of countries", 
+       caption="Source: World Health Organization Global Health Observatory (GHO)")
+```
+\
+We can see from this plot that the price of a pack of cigarettes varies from country to country. 4 countries have a pack of cigarettes (on average) priced at more than 11 dollars, while 1 country has a pack of cigarettes (on average) priced at less than 1 dollar. It's evident that some countries have raised cigarette prices to try to combat smoking, but in most countries, cigarettes are fairly cheap. 91 out of the 106 countries included on this visualization (many countries were missing data) have an average price of a pack of cigarettes between 1 and 7 dollars.
+
+Another easy way for a country to reduce smoking rates is to reduce/inhibit the marketing on cigarettes and other tobacco products. The more ads there are promoting smoking, the more people will be willing to try it. We can visualize to what extent every country has banned tobacco advertisements by simply creating a map. The color of each country on the map is determined by the bans on tobacco advertising that country has implemented. For this data, there are 4 categories of bans: "No ban", "TV, radio, print ban", "Direct + some indirect ban", and "Complete ban". There is also a category for countries that are missing data.
+
+```{r}
+ads=read.csv("https://raw.githubusercontent.com/jackspagna/smoking_reduction/main/enforcement-of-bans-on-tobacco-advertising.csv")
+
+names(ads)=c("Entity", "Code", "Year", "Level")
+
+ads2014=ads%>%
+  filter(Year==2014)
+
+ads2014$Entity[ads2014$Entity=="United States"]="USA"
+ads2014$Entity[ads2014$Entity=="Democratic Republic of Congo"]="Democratic Republic of the Congo"
+ads2014$Entity[ads2014$Entity=="Congo"]="Republic of Congo"
+ads2014$Entity[ads2014$Entity=="Czechia"]="Czech Republic"
+ads2014$Entity[ads2014$Entity=="Cote d'Ivoire"]="Ivory Coast"
+
+greenland=c("Greenland", "GRE", "2014", "1")
+frenchguiana=c("French Guiana", "FGA", "2014", "1")
+taiwan=c("Taiwan", "TAI", "2014", "1")
+puertorico=c("Puerto Rico", "PUE", "2014", "1")
+
+ads2014=rbind(ads2014, greenland, frenchguiana, taiwan, puertorico)
+
+w=map_data("world")
+
+data=merge(w, ads2014, by.x="region", by.y="Entity")
+
+data1=data%>%
+  arrange(group, order)
+
+ggplot(data1, 
+       aes(x=long,
+           y=lat)) + 
+  geom_polygon(aes(group=group,
+                   fill=factor(Level)),
+               color="black") + 
+  scale_fill_manual(labels=c("No data", "No ban", "TV, radio, print ban", "Direct + some indirect ban", "Complete ban"),
+                    values=c("grey50", "#F2F8E9", "#C2E2BF", "#8DCAC4", "#478BBA")) +
+  theme_void() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank()) + 
+  labs(title="Enforcement of bans on tobacco advertising, 2014",
+       caption="Source: World Health Organization Global Health Observatory (GHO)")
+```
+\
+We can see that countries like the US have not implemented any bans, while countries like Russia have enforced a complete ban on this type of marketing. From the plot, it's clear that he majority of countries are enforcing a ban tobacco advertising, emphasizing how widespread the crackdown on smoking is today.
+
+Of course, an effective way to reduce smoking is to provide medications intended to reduce the urge to smoke. The addictive chemical in cigarettes is nicotine. While nicotine isn't inherently harmful, it gets smokers hooked on cigarettes and the tens of thousands of chemicals inside them that are harmful. Smokers who are looking to quit can take many safer forms of nicotine (like gum or nasal spray) that will satisfy their bodies' need for nicotine without having to inhale unhealthy cigarette smoke. This graph visualizes the results from a study where smokers were either given one of these treatments or a placebo, and whether or not they quit smoking after 6 months was measured. 
+
+```{r}
+medication=c(rep("Nicotine gum", 2), rep("Nicotine patch", 2), rep("Nicotine lozenge", 2), rep("Nicotine nasal spray", 2), rep("Nicotine inhaler", 2), rep("Bupropion", 2))
+active=rep(c("Active drug", "Placebo"), 6)
+percent=c(.197, .115, .144, .084, .172, .089, .239, .118, .171, .091, .193, .102)
+
+quit=data.frame(medication, active, percent)
+
+ggplot(quit, 
+       aes(x=medication,
+           y=percent,
+           fill=active)) +
+  geom_bar(stat="identity",
+           position='dodge') +
+  geom_text(aes(x=medication,
+                y=percent,
+                label=scales::percent(percent)),
+            vjust=-0.2,
+            size=3,
+            position=position_dodge(0.9)) +
+  scale_y_continuous(limits=c(0, .3), 
+                     breaks=seq(.0, .3, by=.1), 
+                     labels=scales::percent) +
+  theme_bw() +
+  theme(legend.title = element_blank(),
+        axis.text.x=element_text(angle=30,
+                                 vjust=0.65,
+                                 hjust=0.5)) +
+  labs(title="Long term (≥ 6 months) quit rates for smoking cessation medications",
+       x="",
+       y="Quit Rate",
+       caption="Source: http://www2.mdanderson.org/app/team/en/mod3_print.cfm")
+```
+\
+From this grouped bar graph, it's easy to see that all of the medications were effective at increasing the quit rate of the subjects (all medications had a quit rate of 14 percent or more than baseline and 6 percent or more than the placebo). This is very important, as it indicates that smoking cessation methods can actually cause a reduction in smoking rates, not just be associated with them. Overall, these cessation medications make quitting easier, effectively driving down smoking rates and cigarette sales.
+
+But have these methods actually been successful at reducing smoking rates as a whole? We can answer this question using a simple line chart that shows the worldwide smoking rate every five years from 2000 to 2020.
+
+```{r}
+year=c("2000", "2005", "2010", "2015", "2020")
+rate=c(.3415, .3075, .2777, .2522, .2298)
+
+smokingrate=data.frame(year, rate)
+
+ggplot(smokingrate, 
+       aes(x=year, 
+           y=rate, 
+           group=1)) + 
+  geom_line() + 
+  geom_point(size=2, 
+             color="royalblue") +
+  geom_text(aes(x=year, 
+                y=rate, 
+                label=scales::percent(rate)), 
+            vjust=-1.5, size=3.5) +
+  scale_y_continuous(limits=c(.2, .375), 
+                     breaks=seq(.2, .35, by=.05), 
+                     labels=scales::percent) + 
+  theme_bw() + 
+  labs(title="Worldwide smoking rate, 2000 to 2020", 
+       subtitle="People aged 15 or older",
+       x="",
+       y="", 
+       caption="Source: Macrotrends")
+```
+\
+This plot supports the idea that the methods mentioned above have contributed to a worldwide reduction in smoking. The 2020 worldwide smoking rate, 23.0%, represents a 32.7% reduction from the 2000 worldwide smoking rate, 34.2%. Notably, the reduction in smoking over this twenty year period was very linear.
+
+From the visualizations created, it's clear that there has, in fact, been a reduction in smoking rates. Whether it's the increased cigarette prices, the availability of smoking cessation methods, or bans on tobacco advertising, methods to combat smoking have seemingly been successful. And it's not just some countries taking initiative; It's truly been a worldwide effort. As the detrimental effects of smoking have become known, the effort to reduce cigarette smoking has taken a role in saving our generation and future generations from their unwanted effects on our bodies.
